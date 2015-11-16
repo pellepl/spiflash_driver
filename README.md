@@ -86,7 +86,7 @@ static void handle_spi_txrx(spiflash_t *spi) {
     // will now await IRQ if res was ok...
   } else {
     // async_tx_len == async_rx_len == 0, txrx transaction finished
-    SPIFLASH_trigger(spi, res);
+    SPIFLASH_async_trigger(spi, res);
   }
   return res;
 }
@@ -100,7 +100,7 @@ static void IRQ_callback_from_my_mcu_lowlevel_spi_driver(int res) {
   }
   if (res != 0) {
     // something went wrong
-    SPIFLASH_trigger(my_spiflash_struct, res);
+    SPIFLASH_async_trigger(my_spiflash_struct, res);
   }
 }
 
@@ -156,7 +156,7 @@ platform, it could look like this:
 
 ```
 static void spif_timer_cb(void *user_data)  {
-  SPIFLASH_trigger((spiflash_t *)user_data, res);
+  SPIFLASH_async_trigger((spiflash_t *)user_data, res);
 }
 
 void impl_spiflash_wait(spiflash_t *spi, uint32_t ms) {
@@ -210,7 +210,7 @@ to zero.
 In this case, your ```impl_spiflash_wait``` will be called with argument ```ms``` being zero.
 This indicates that you should wait for the BUSY pin to signal that the spi flash is not working
 any longer. Do note, that in the synchronous case you must block until the flash is ready. In
-the asynchronous case you must call ```SPIFLASH_trigger``` when the flash becomes ready.
+the asynchronous case you must call ```SPIFLASH_async_trigger``` when the flash becomes ready.
 
 
 ## Finally...
