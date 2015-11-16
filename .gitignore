@@ -1,0 +1,7 @@
+build/
+makefile
+test/
+.cproject
+.project
+.settings
+
