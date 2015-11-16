@@ -187,10 +187,11 @@ A typical configuration would look like this:
 
 ```
 const spiflash_config_t my_spiflash_config = {
-  .sz = 1024*1024*2, // for a 2 MB flash
-  .page_sz = 256, // 256 byte pages
-  .addr_sz = 3, // 3 byte addressing
-  .addr_endian = SPIFLASH_ENDIANNESS_BIG, // big endianess on addressing
+  .sz = 1024*1024*2, // e.g. for a 2 MB flash
+  .page_sz = 256, // normally 256 byte pages
+  .addr_sz = 3, // normally 3 byte addressing
+  .addr_dummy_sz = 0, // using single line data, not quad or something
+  .addr_endian = SPIFLASH_ENDIANNESS_BIG, // normally big endianess on addressing
   .sr_write_ms = 10,
   .page_program_ms = 2,
   .block_erase_4_ms = 100,
