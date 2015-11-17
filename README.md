@@ -227,7 +227,7 @@ static const spiflash_hal_t my_spiflash_hal = {
 
 static spiflash_t spif;
 
-#ifdef I_WANT_TO_USE_SYNCHRONOUS_SPIFLASH
+#ifndef I_WANT_TO_USE_SYNCHRONOUS_SPIFLASH
 static void impl_spiflash_cb_async(spiflash_t *spi,
     spiflash_op_t operation, int err_code) {
   // do something with this info...
