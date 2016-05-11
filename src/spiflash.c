@@ -557,10 +557,11 @@ void SPIFLASH_init(spiflash_t *spi,
 int SPIFLASH_async_trigger(spiflash_t *spi, int err_code) {
   int res = _spiflash_end_async(spi, err_code);
   if (res != SPIFLASH_OK || spi->op == SPIFLASH_OP_IDLE) {
-    if (spi->async && spi->async_cb) {
-      spi->async_cb(spi, spi->op, res);
-    }
+    volatile spiflash_op_t op = spi->op;
     spi->op = SPIFLASH_OP_IDLE;
+    if (spi->async && spi->async_cb) {
+      spi->async_cb(spi, op, res);
+    }
   }
   return res;
 }
