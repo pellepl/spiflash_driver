@@ -137,7 +137,7 @@ static uint32_t _spiflash_get_erase_time(spiflash_t *spi, uint32_t len) {
 
 static int _spiflash_begin_async(spiflash_t *spi) {
   int res = SPIFLASH_OK;
-  
+
   if (spi->op == SPIFLASH_OP_IDLE) {
     return SPIFLASH_ERR_BAD_STATE;
   }
@@ -175,12 +175,13 @@ static int _spiflash_begin_async(spiflash_t *spi) {
     uint32_t rem_pg_sz = spi->cfg->page_sz - (spi->addr & (spi->cfg->page_sz - 1));
     uint32_t wr_sz = spi->wr_len < rem_pg_sz ? spi->wr_len : rem_pg_sz;
     SPIF_DBG("write - data %i of %i wait...\n", wr_sz, spi->wr_len);
-    res = spi->hal->_spiflash_spi_txrx(spi, spi->wr_buf, wr_sz, 0, 0);
+    const uint8_t *wr_buf = spi->wr_buf;
     spi->wr_buf += wr_sz;
     spi->wr_len -= wr_sz;
     spi->addr += wr_sz;
     spi->wait_period_ms = spi->cfg->page_program_ms;
     spi->busy_check_wait = BCW_WAIT;
+    res = spi->hal->_spiflash_spi_txrx(spi, wr_buf, wr_sz, 0, 0);
     return res;
   }
 
@@ -201,14 +202,14 @@ static int _spiflash_begin_async(spiflash_t *spi) {
     if (cmd == 0x00) return SPIFLASH_ERR_BAD_CONFIG;
     spi->tx_internal_buf[0] = cmd;
     _spiflash_compose_address(spi, spi->addr, &spi->tx_internal_buf[1]);
-    res = spi->hal->_spiflash_spi_txrx(spi,
-        &spi->tx_internal_buf[0],
-        1 + spi->cfg->addr_sz + spi->cfg->addr_dummy_sz,
-        0, 0);
     spi->addr += era_sz;
     spi->erase_len -= era_sz;
     spi->wait_period_ms = era_time;
     spi->busy_check_wait = BCW_WAIT;
+    res = spi->hal->_spiflash_spi_txrx(spi,
+        &spi->tx_internal_buf[0],
+        1 + spi->cfg->addr_sz + spi->cfg->addr_dummy_sz,
+        0, 0);
     return res;
   }
 
@@ -225,9 +226,9 @@ static int _spiflash_begin_async(spiflash_t *spi) {
     spi->tx_internal_buf[0] = spi->cmd_tbl->write_sr;
     spi->tx_internal_buf[1] = spi->sr_data;
     spi->hal->_spiflash_spi_cs(spi, 1);
-    res = spi->hal->_spiflash_spi_txrx(spi, &spi->tx_internal_buf[0], 2, 0, 0);
     spi->wait_period_ms = spi->cfg->sr_write_ms;
     spi->busy_check_wait = BCW_WAIT;
+    res = spi->hal->_spiflash_spi_txrx(spi, &spi->tx_internal_buf[0], 2, 0, 0);
     return res;
   }
 
@@ -243,9 +244,9 @@ static int _spiflash_begin_async(spiflash_t *spi) {
     SPIF_DBG("erase chip - command wait...\n");
     spi->hal->_spiflash_spi_cs(spi, 1);
     spi->tx_internal_buf[0] = spi->cmd_tbl->chip_erase;
-    res = spi->hal->_spiflash_spi_txrx(spi, &spi->tx_internal_buf[0], 1, 0, 0);
     spi->wait_period_ms = spi->cfg->chip_erase_ms;
     spi->busy_check_wait = BCW_WAIT;
+    res = spi->hal->_spiflash_spi_txrx(spi, &spi->tx_internal_buf[0], 1, 0, 0);
     return res;
   }
 
@@ -322,8 +323,8 @@ static int _spiflash_begin_async(spiflash_t *spi) {
     // write_reg: data
     SPIF_DBG("write_reg - data%s...\n", spi->op == SPIFLASH_OP_WRITE_REG_DATA ? "" : " wait");
     spi->hal->_spiflash_spi_cs(spi, 1);
-    res = spi->hal->_spiflash_spi_txrx(spi, &spi->tx_internal_buf[0], 2, 0, 0);
     spi->busy_check_wait = spi->op == SPIFLASH_OP_WRITE_REG_DATA ? BCW_IDLE : BCW_WAIT;
+    res = spi->hal->_spiflash_spi_txrx(spi, &spi->tx_internal_buf[0], 2, 0, 0);
     return res;
   }
 
@@ -361,7 +362,7 @@ static int _spiflash_end_async(spiflash_t *spi, int res) {
   // handle busy-check-wait states
   switch (spi->busy_check_wait) {
   case BCW_WAIT:
-    SPIF_DBG("busy check WAIT...\n");
+    SPIF_DBG("busy check WAIT %i...\n", spi->wait_period_ms);
     spi->hal->_spiflash_spi_cs(spi, 0);
     // if wait period is 0, call wait and then break free of the bsw loop
     spi->busy_check_wait = spi->wait_period_ms == 0 ? BCW_IDLE : BCW_READ_SR;
@@ -376,8 +377,8 @@ static int _spiflash_end_async(spiflash_t *spi, int res) {
   case BCW_CHECK:
     spi->hal->_spiflash_spi_cs(spi, 0);
     if (_spiflash_is_hwbusy(spi, spi->sr_data)) {
-      SPIF_DBG("BUSY check WAIT...\n");
       spi->wait_period_ms = DECR_WAIT(spi->wait_period_ms);
+      SPIF_DBG("BUSY check WAIT %i...\n", spi->wait_period_ms);
       spi->busy_check_wait = BCW_READ_SR;
       spi->hal->_spiflash_wait(spi, spi->wait_period_ms);
       return SPIFLASH_OK;
@@ -386,6 +387,9 @@ static int _spiflash_end_async(spiflash_t *spi, int res) {
       spi->busy_check_wait = BCW_IDLE;
       break;
     }
+  case BCW_IDLE:
+    SPIF_DBG("no BCW\n");
+    break;
   } // switch (spi->busy_check_wait)
   
   // handle results
@@ -527,9 +531,8 @@ static int _spiflash_exe(spiflash_t *spi) {
     while (res == SPIFLASH_OK && spi->op != SPIFLASH_OP_IDLE) {
       res = SPIFLASH_async_trigger(spi, res);
     }
+    _spiflash_finalize(spi);
   }
-
-  _spiflash_finalize(spi);
 
   return res;
 }
@@ -556,9 +559,11 @@ void SPIFLASH_init(spiflash_t *spi,
 
 int SPIFLASH_async_trigger(spiflash_t *spi, int err_code) {
   int res = _spiflash_end_async(spi, err_code);
-  if (res != SPIFLASH_OK || spi->op == SPIFLASH_OP_IDLE) {
-    volatile spiflash_op_t op = spi->op;
-    spi->op = SPIFLASH_OP_IDLE;
+  spiflash_op_t op = spi->op;
+  if (res != SPIFLASH_OK || op == SPIFLASH_OP_IDLE) {
+    if (res != SPIFLASH_OK) {
+      spi->op = SPIFLASH_OP_IDLE;
+    }
     if (spi->async && spi->async_cb) {
       spi->async_cb(spi, op, res);
     }
