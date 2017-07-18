@@ -33,6 +33,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef _SPIFLASH_ERR_BASE
 #define _SPIFLASH_ERR_BASE            (-24000)
 #endif
@@ -441,5 +445,9 @@ int SPIFLASH_is_busy(spiflash_t *spi);
  */
 int SPIFLASH_async_trigger(spiflash_t *spi, int err_code);
 
+#ifdef __cplusplus
+}
+#endif
+  
 #endif /*SPIFLASH_H_*/
 
