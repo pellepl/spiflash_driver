@@ -223,8 +223,8 @@ static int _spiflash_begin_async(spiflash_t *spi) {
   case SPIFLASH_OP_WRITE_SR_sDATA: {
     // write_sr: data
     SPIF_DBG("write_sr - data wait...\n");
-    spi->tx_internal_buf[0] = spi->cmd_tbl->write_sr;
     spi->tx_internal_buf[1] = spi->sr_data;
+    spi->tx_internal_buf[0] = spi->cmd_tbl->write_sr;
     spi->hal->_spiflash_spi_cs(spi, 1);
     spi->wait_period_ms = spi->cfg->sr_write_ms;
     spi->busy_check_wait = BCW_WAIT;
