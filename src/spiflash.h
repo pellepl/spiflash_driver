@@ -61,6 +61,7 @@ extern "C" {
     .write_disable = 0x04, \
     .write_enable = 0x06, \
     .page_program = 0x02, \
+    .page_erase = 0x81, \
     .read_data = 0x03, \
     .read_data_fast = 0x0b, \
     .write_sr = 0x01, \
@@ -91,6 +92,7 @@ typedef struct spiflash_cmd_tbl_s {
   uint8_t write_enable;
 
   uint8_t page_program;
+  uint8_t page_erase;
   uint8_t read_data;
   uint8_t read_data_fast;
   
@@ -183,6 +185,8 @@ typedef struct spiflash_config_s {
   uint32_t sr_write_ms;
   // typical page program time in ms
   uint32_t page_program_ms;
+  // typical page erase time in ms
+  uint32_t page_erase_ms;
   // typical 4k block erase time in ms
   uint32_t block_erase_4_ms;
   // typical 8k block erase time in ms

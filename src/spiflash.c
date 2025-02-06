@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define BCW_CHECK   3
 
 static const uint8_t MultiplyDeBruijnBitPosition[32] = {
-  32, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
+  0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
   31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
 };
 
@@ -67,7 +67,26 @@ static void _spiflash_finalize(spiflash_t *spi) {
 
 static uint16_t _spiflash_get_supported_block_mask(spiflash_t *spi) {
   // bit 0:256 1:512 2:1K 3:2K 4:4K 5:8K 6:16K 7:32K 8:64K etc
+  uint32_t page_mask = 0;
+
+  switch (spi->cfg->page_sz)
+  {
+  case 256:
+    page_mask = 1<<0;
+    break;
+  case 512:
+    page_mask = 1<<1;
+    break;
+  case 1024:
+    page_mask = 1<<2;
+    break;
+  case 2048:
+    page_mask = 1<<3;
+    break;
+  } 
+
   uint16_t bm = 0 |
+      (spi->cmd_tbl->page_erase ? (page_mask) : 0) |
       (spi->cmd_tbl->block_erase_4 ? (1<<4) : 0) |
       (spi->cmd_tbl->block_erase_8 ? (1<<5) : 0) |
       (spi->cmd_tbl->block_erase_16 ? (1<<6) : 0) |
@@ -106,7 +125,9 @@ static uint32_t _spiflash_get_largest_erase_area(spiflash_t *spi, uint32_t addr,
 }
 
 static uint8_t _spiflash_get_erase_cmd(spiflash_t *spi, uint32_t len) {
-  if (len == 4*1024 && spi->cmd_tbl->block_erase_4)
+  if(len == spi->cfg->page_sz && spi->cmd_tbl->page_erase)
+    return spi->cmd_tbl->page_erase;
+  else if (len == 4*1024 && spi->cmd_tbl->block_erase_4)
     return spi->cmd_tbl->block_erase_4;
   else if (len == 8*1024 && spi->cmd_tbl->block_erase_8)
     return spi->cmd_tbl->block_erase_8;
@@ -121,7 +142,9 @@ static uint8_t _spiflash_get_erase_cmd(spiflash_t *spi, uint32_t len) {
 }
 
 static uint32_t _spiflash_get_erase_time(spiflash_t *spi, uint32_t len) {
-  if (len == 4*1024)
+  if(len == spi->cfg->page_sz)
+    return spi->cfg->page_erase_ms;
+  else if (len == 4*1024)
     return spi->cfg->block_erase_4_ms;
   else if (len == 8*1024)
     return spi->cfg->block_erase_8_ms;
