@@ -164,7 +164,7 @@ static int _spiflash_begin_async(spiflash_t *spi) {
   if (spi->op == SPIFLASH_OP_IDLE) {
     return SPIFLASH_ERR_BAD_STATE;
   }
-  
+
   if (spi->busy_pre_check) {
     // busy check: issue read sr
     SPIF_DBG("precheck...\n");
@@ -172,7 +172,7 @@ static int _spiflash_begin_async(spiflash_t *spi) {
     res = spi->hal->_spiflash_spi_txrx(spi, &spi->cmd_tbl->read_sr, 1, &spi->sr_data, 1);
     return res;
   }
-  
+
   switch (spi->op) {
   case SPIFLASH_OP_WRITE_sWREN: {
     // write: issue write enable
@@ -310,10 +310,12 @@ static int _spiflash_begin_async(spiflash_t *spi) {
   }
 
   case SPIFLASH_OP_READ_PRODUCT: {
-    // read_jedec
+    // read_prod
     SPIF_DBG("read_prod...\n");
     spi->hal->_spiflash_spi_cs(spi, 1);
-    res = spi->hal->_spiflash_spi_txrx(spi, &spi->cmd_tbl->device_id, 1, (uint8_t *)spi->id_dst, 3);
+    spi->tx_internal_buf[0] = spi->cmd_tbl->device_id;
+    spi->tx_internal_buf[3] = 0;
+    res = spi->hal->_spiflash_spi_txrx(spi, &spi->tx_internal_buf[0], 4, (uint8_t *)spi->id_dst, 2);
     return res;
   }
 
@@ -368,7 +370,7 @@ static int _spiflash_end_async(spiflash_t *spi, int res) {
     _spiflash_finalize(spi);
     return res;
   }
-  
+
   // handle busy pre check
   if (spi->busy_pre_check) {
     if (_spiflash_is_hwbusy(spi, spi->sr_data)) {
@@ -381,7 +383,7 @@ static int _spiflash_end_async(spiflash_t *spi, int res) {
       return _spiflash_begin_async(spi);
     }
   }
-  
+
   // handle busy-check-wait states
   switch (spi->busy_check_wait) {
   case BCW_WAIT:
@@ -414,7 +416,7 @@ static int _spiflash_end_async(spiflash_t *spi, int res) {
     SPIF_DBG("no BCW\n");
     break;
   } // switch (spi->busy_check_wait)
-  
+
   // handle results
   switch (spi->op) {
   case SPIFLASH_OP_WRITE_sWREN:
@@ -532,7 +534,7 @@ static int _spiflash_end_async(spiflash_t *spi, int res) {
     spi->hal->_spiflash_spi_cs(spi, 0);
     _spiflash_finalize(spi);
   }
-  
+
 
   return res;
 }
@@ -561,7 +563,7 @@ static int _spiflash_exe(spiflash_t *spi) {
 }
 
 
-void SPIFLASH_init(spiflash_t *spi, 
+void SPIFLASH_init(spiflash_t *spi,
                    const spiflash_config_t *cfg,
                    const spiflash_cmd_tbl_t *cmd,
                    const spiflash_hal_t *hal,
@@ -573,7 +575,7 @@ void SPIFLASH_init(spiflash_t *spi,
   spi->cmd_tbl = cmd;
   spi->hal = hal;
   spi->async_cb = async_cb;
-  
+
   spi->async = async;
   spi->user_data = user_data;
   spi->op = SPIFLASH_OP_IDLE;
@@ -599,15 +601,15 @@ int SPIFLASH_write(spiflash_t *spi, uint32_t addr, uint32_t len, const uint8_t *
   if (spi->op != SPIFLASH_OP_IDLE) {
     return SPIFLASH_ERR_BUSY;
   }
-  
+
   spi->addr = addr;
   spi->wr_buf = buf;
   spi->wr_len = len;
-  
+
   spi->op = SPIFLASH_OP_WRITE_sWREN;
-  
+
   res = _spiflash_exe(spi);
-  
+
   return res;
 }
 
@@ -652,13 +654,13 @@ int SPIFLASH_read_jedec_id(spiflash_t *spi, uint32_t *jedec_id) {
   if (spi->op != SPIFLASH_OP_IDLE) {
     return SPIFLASH_ERR_BUSY;
   }
-  
+
   spi->id_dst = jedec_id;
-  
+
   spi->op = SPIFLASH_OP_READ_JEDEC;
-  
+
   res = _spiflash_exe(spi);
-  
+
   return res;
 }
 
@@ -800,4 +802,3 @@ int SPIFLASH_chip_erase(spiflash_t *spi) {
 int SPIFLASH_is_busy(spiflash_t *spi) {
   return spi->op == SPIFLASH_OP_IDLE ? SPIFLASH_OK : SPIFLASH_ERR_BUSY;
 }
-
