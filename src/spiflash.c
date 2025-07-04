@@ -101,6 +101,8 @@ static uint32_t _spiflash_get_largest_erase_area(spiflash_t *spi, uint32_t addr,
   uint8_t bm_lz = _spiflash_clz(bm);
   uint8_t addr_lz = _spiflash_clz(addr);
 
+  if(addr_lz == 0) addr_lz = 32;
+
   bm >>= bm_lz;
   bm_lz += 8; // block mask starts at 256 bytes
 
